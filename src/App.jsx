@@ -7,13 +7,13 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Resp
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
-  apiKey: "AIzaSyB82KNkYF7YvQKnXs1tx38rzcIJPN3x8LU",
+  apiKey: "USE_API_KEY_HERE",
   authDomain: "vit-hostel-complaint-new.firebaseapp.com",
   projectId: "vit-hostel-complaint-new",
   storageBucket: "vit-hostel-complaint-new.firebasestorage.app",
-  messagingSenderId: "76683307577",
-  appId: "1:76683307577:web:b8f76b79c1d4247b4fbbe8",
-  measurementId: "G-Q1B54YBRKD"
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID_HERE",
+  measurementId: "MEASUREMENT_ID_HERE"
 };
 
 // --- Initialize Firebase ---
@@ -30,7 +30,7 @@ const categoryOptions = ['all', 'Wi-fi Related Complaints', 'Carpenter Related C
 
 // --- Gemini API Helper ---
 const callGeminiAPI = async (prompt) => {
-    const apiKey = "AIzaSyDgNfRNtmk8PiRsTkZO8t3BKYVwwt_qNjc"; // API Key updated
+    const apiKey = "GEMINI_API_KEY_HERE"; // API Key updated
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     
     const payload = {
