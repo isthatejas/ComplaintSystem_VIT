@@ -11,7 +11,7 @@ A full-stack web application designed to streamline complaint management within 
 
 | Login Page | Student Dashboard | Admin Dashboard |
 | :---: | :---: | :---: |
-| <img width="844" height="559" alt="image" src="https://github.com/user-attachments/assets/64789a1f-8957-4454-9a84-72f426c77360" /> | <img width="1154" height="484" alt="image" src="https://github.com/user-attachments/assets/bbb65235-463b-4817-8aff-4fd81553f51a" /> | <img width="1158" height="676" alt="image" src="https://github.com/user-attachments/assets/9606ce87-2329-403f-8564-ce9111eba1d8" /> |
+| <img width="844" height="559" alt="image" src="https://github.com/user-attachments/assets/7c0a146b-da6e-4f38-a857-f20f3f1b9d2a" /> | <img width="1154" height="484" alt="image" src="https://github.com/user-attachments/assets/ada399f8-ec7a-45a8-ba6b-cc71e7f2c14e" /> | <img width="1158" height="676" alt="image" src="https://github.com/user-attachments/assets/f9a497db-aa55-4e14-80da-bf46be88c4dd" /> |
 
 ---
 
