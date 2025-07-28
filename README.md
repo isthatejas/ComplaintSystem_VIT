@@ -3,6 +3,7 @@
 A full-stack web application designed to streamline complaint management within VIT Men's Hostels. Students can easily register and track complaints, while administrators get a powerful dashboard to manage and resolve them efficiently.
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=firebase)](https://vit-hostel-complaint-new.web.app/)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 ---
