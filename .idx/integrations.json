@@ -1,0 +1,6 @@
+{
+  "firebase_hosting": {
+    "deploymentHostingUrl": "https://vit-hostel-complaint-new.web.app"
+  },
+  "cloud_run_deploy": {}
+}
