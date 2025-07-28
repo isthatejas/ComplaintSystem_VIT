@@ -41,7 +41,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 ### 1. Clone the Repository
 
 ```bash
-git clone [https://github.com/isthatejas/ComplaintSystem_VIT.git](https://github.com/isthatejas/ComplaintSystem_VIT.git)
+git clone https://github.com/isthatejas/ComplaintSystem_VIT.git
 cd ComplaintSystem_VIT
 ```
 ### 2. Install Dependencies
