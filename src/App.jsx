@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendEmailVerification, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, updateDoc, arrayUnion, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
-  apiKey: "USE_API_KEY_HERE",
+  apiKey: "YOUR_API_KEY_HERE",
   authDomain: "vit-hostel-complaint-new.firebaseapp.com",
   projectId: "vit-hostel-complaint-new",
   storageBucket: "vit-hostel-complaint-new.firebasestorage.app",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID_HERE",
-  measurementId: "MEASUREMENT_ID_HERE"
+  messagingSenderId: "YOUR_MESSAGE_SENDERID_HERE",
+  appId: "YOUR_APP_ID_HERE",
+  measurementId: "G-Q1B54YBRKD"
 };
 
 // --- Initialize Firebase ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // --- Admin Emails ---
 const ADMIN_EMAILS = ["tejassharma0102@gmail.com", "suchetsanjeev.patil@gmail.com"];
@@ -30,39 +32,14 @@ const categoryOptions = ['all', 'Wi-fi Related Complaints', 'Carpenter Related C
 
 // --- Gemini API Helper ---
 const callGeminiAPI = async (prompt) => {
-    const apiKey = "GEMINI_API_KEY_HERE"; // API Key updated
+    const apiKey = "ENTER_YOUR_API_KEY_FOR_GEMINI"; // API Key updated
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    
-    const payload = {
-        contents: [{ role: "user", parts: [{ text: prompt }] }]
-    };
-
+    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
     try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorBody = await response.text();
-            console.error("Gemini API Error Response:", errorBody);
-            throw new Error(`API request failed with status ${response.status}`);
-        }
-
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
         const result = await response.json();
-        
-        if (result.candidates && result.candidates.length > 0 &&
-            result.candidates[0].content && result.candidates[0].content.parts &&
-            result.candidates[0].content.parts.length > 0) {
-            return result.candidates[0].content.parts[0].text;
-        } else {
-            console.warn("Gemini API response structure unexpected:", result);
-            if (result.promptFeedback && result.promptFeedback.blockReason) {
-                 throw new Error(`Request blocked: ${result.promptFeedback.blockReason}`);
-            }
-            return "Could not generate a response. Please try again.";
-        }
+        return result.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate a response.";
     } catch (error) {
         console.error("Error calling Gemini API:", error);
         return `Error: ${error.message}`;
@@ -80,6 +57,7 @@ const ReportsIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-
 const StarIcon = ({ filled, onClick }) => (<svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" className={`h-8 w-8 cursor-pointer ${filled ? 'text-yellow-400' : 'text-gray-300'}`} viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>);
 const SunIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clipRule="evenodd" /></svg>);
 const MoonIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>);
+const ProfileIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>);
 
 // --- Theme Toggle Component ---
 const ThemeToggle = ({ theme, setTheme }) => {
@@ -102,9 +80,6 @@ export default function App() {
     const [theme, setTheme] = useState('light');
 
     useEffect(() => {
-        // IMPORTANT: For Tailwind dark mode to work in a local setup, 
-        // your tailwind.config.js must have darkMode set to 'class'.
-        // e.g., module.exports = { darkMode: 'class', ... }
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
@@ -113,7 +88,18 @@ export default function App() {
     }, [theme]);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user && ADMIN_EMAILS.includes(user.email)) {
+                const userDocRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(userDocRef);
+                if (!docSnap.exists()) {
+                    await setDoc(userDocRef, {
+                        name: "Admin",
+                        email: user.email,
+                        isAdmin: true
+                    });
+                }
+            }
             setUser(user);
             setLoading(false);
         });
@@ -385,6 +371,7 @@ function StudentDashboard({ user, onLogout, theme, setTheme }) {
                 <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                     {view === 'dashboard' && <DashboardView complaints={complaints} setView={setView} onDelete={handleDeleteComplaint} onOpenFeedback={(id) => setFeedbackModal({ isOpen: true, complaintId: id })} />}
                     {view === 'form' && <ComplaintForm user={user} setView={setView} profile={studentProfile} />}
+                    {view === 'profile' && <StudentProfileView user={user} profile={studentProfile} setView={setView}/>}
                 </main>
             </div>
         </div>
@@ -394,22 +381,32 @@ function StudentDashboard({ user, onLogout, theme, setTheme }) {
 // --- Admin Dashboard Component ---
 function AdminDashboard({ user, onLogout, theme, setTheme }) {
     const [allComplaints, setAllComplaints] = useState([]);
+    const [adminProfile, setAdminProfile] = useState(null);
     const [view, setView] = useState('dashboard'); // 'dashboard' or 'reports'
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     
     useEffect(() => {
+        const userDocRef = doc(db, "users", user.uid);
+        const unsubscribeProfile = onSnapshot(userDocRef, (doc) => {
+            if (doc.exists()) setAdminProfile(doc.data());
+        });
+
         const q = query(collection(db, "complaints"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const unsubscribeComplaints = onSnapshot(q, (querySnapshot) => {
             const complaintsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             complaintsData.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
             setAllComplaints(complaintsData);
         }, (error) => console.error("Error fetching all complaints (Admin): ", error));
-        return () => unsubscribe();
-    }, []);
+        
+        return () => {
+            unsubscribeProfile();
+            unsubscribeComplaints();
+        };
+    }, [user]);
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar onLogout={onLogout} setView={setView} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} isAdmin={true} />
+            <Sidebar onLogout={onLogout} setView={setView} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} isAdmin={true} profile={adminProfile} />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="bg-white dark:bg-gray-800 shadow-sm p-4 flex-shrink-0 flex justify-between items-center">
                     <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">Admin Portal</h1>
@@ -421,6 +418,7 @@ function AdminDashboard({ user, onLogout, theme, setTheme }) {
                 <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                     {view === 'dashboard' && <AdminDashboardView complaints={allComplaints} />}
                     {view === 'reports' && <ReportsView complaints={allComplaints} />}
+                    {view === 'profile' && <AdminProfileView user={user} profile={adminProfile} setView={setView} />}
                 </main>
             </div>
         </div>
@@ -732,10 +730,12 @@ function Sidebar({ onLogout, setView, isSidebarOpen, setSidebarOpen, isAdmin, pr
                     <nav className="mt-4">
                         <ul>
                             {isAdmin ? (<>
+                                <li className="px-4 mb-2"><button onClick={() => handleNavigation('profile')} className="w-full flex items-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition"><ProfileIcon /> Profile</button></li>
                                 <li className="px-4 mb-2"><button onClick={() => handleNavigation('dashboard')} className="w-full flex items-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition"><DashboardIcon /> Dashboard</button></li>
                                 <li className="px-4 mb-2"><button onClick={() => handleNavigation('reports')} className="w-full flex items-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition"><ReportsIcon /> Reports</button></li>
                                 </>
                             ) : (<>
+                                <li className="px-4 mb-2"><button onClick={() => handleNavigation('profile')} className="w-full flex items-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition"><ProfileIcon /> Profile</button></li>
                                 <li className="px-4 mb-2"><button onClick={() => handleNavigation('dashboard')} className="w-full flex items-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition"><DashboardIcon /> Dashboard</button></li>
                                 <li className="px-4 mb-2"><button onClick={() => handleNavigation('form')} className="w-full flex items-center px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition"><NewComplaintIcon /> New Complaint</button></li></>
                             )}
@@ -831,7 +831,15 @@ function ComplaintForm({ user, setView, profile }) {
     const countryCodes = ['+91', '+1', '+44', '+61', '+81'];
 
     useEffect(() => {
-        if (profile) setFormData(prev => ({ ...prev, name: profile.name || '', regNo: profile.regNo || '' }));
+        if (profile) {
+            setFormData(prev => ({ 
+                ...prev, 
+                name: profile.name || '', 
+                regNo: profile.regNo || '',
+                phone: profile.phone || '',
+                countryCode: profile.countryCode || '+91'
+            }));
+        }
     }, [profile]);
 
     const handleChange = (e) => {
@@ -898,6 +906,128 @@ function ComplaintForm({ user, setView, profile }) {
                     <button type="button" onClick={() => setView('dashboard')} className="px-6 py-2 mr-3 font-semibold text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition">Cancel</button>
                     <button type="submit" className="px-6 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">Submit Complaint</button>
                 </div>
+            </form>
+        </div>
+    );
+}
+
+// --- Profile View Components ---
+function StudentProfileView({ user, profile, setView }) {
+    const [name, setName] = useState(profile?.name || '');
+    const [phone, setPhone] = useState(profile?.phone || '');
+    const [countryCode, setCountryCode] = useState(profile?.countryCode || '+91');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
+    const countryCodes = ['+91', '+1', '+44', '+61', '+81'];
+
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+        setMessage('');
+        setError('');
+        const phoneRegex = /^\d{10}$/;
+        if (phone && !phoneRegex.test(phone)) {
+            setError('Phone number must be exactly 10 digits.');
+            return;
+        }
+        
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, { name, phone, countryCode });
+        setMessage('Profile details updated successfully!');
+        setTimeout(() => setMessage(''), 3000);
+    };
+
+    const handlePasswordSubmit = async (e) => {
+        e.preventDefault();
+        setMessage('');
+        setError('');
+        if (newPassword !== confirmNewPassword) {
+            setError("New passwords do not match.");
+            return;
+        }
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, newPassword);
+            setMessage('Password updated successfully!');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+            setTimeout(() => setMessage(''), 3000);
+        } catch (err) {
+            setError(err.message.replace('Firebase: ', ''));
+        }
+    };
+
+    return (
+        <div>
+            <h2 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200">Your Profile</h2>
+            <div className="space-y-8 max-w-lg mx-auto">
+                <form onSubmit={handleProfileSubmit} className="space-y-6 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Personal Details</h3>
+                    <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Full Name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg" required /></div>
+                    <div>
+                        <label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Phone Number</label>
+                        <div className="flex">
+                            <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="px-2 bg-gray-50 dark:bg-gray-700 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-lg focus:outline-none">
+                                {countryCodes.map(code => <option key={code} value={code}>{code}</option>)}
+                            </select>
+                            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-r-lg" />
+                        </div>
+                    </div>
+                    <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Registration No.</label><input type="text" value={profile?.regNo || ''} className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg cursor-not-allowed" disabled /></div>
+                    <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Email</label><input type="email" value={user?.email || ''} className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg cursor-not-allowed" disabled /></div>
+                    <div className="flex justify-end">
+                        <button type="submit" className="px-6 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">Update Details</button>
+                    </div>
+                </form>
+
+                <form onSubmit={handlePasswordSubmit} className="space-y-6 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Change Password</h3>
+                    <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Current Password</label><input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg" required /></div>
+                    <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg" required /></div>
+                    <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Confirm New Password</label><input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg" required /></div>
+                    <div className="flex justify-end">
+                        <button type="submit" className="px-6 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">Change Password</button>
+                    </div>
+                </form>
+                {message && <p className="text-green-600 text-sm text-center mt-4">{message}</p>}
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+            </div>
+        </div>
+    );
+}
+
+function AdminProfileView({ user, profile, setView }) {
+    const [name, setName] = useState(profile?.name || '');
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        if(profile) setName(profile.name);
+    }, [profile]);
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, { name });
+        setMessage('Profile updated successfully!');
+        setTimeout(() => setMessage(''), 3000);
+    };
+
+     return (
+        <div>
+            <h2 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200">Admin Profile</h2>
+            <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 max-w-lg mx-auto">
+                <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Admin Name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg" required /></div>
+                <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Email</label><input type="email" value={user?.email || ''} className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg cursor-not-allowed" disabled /></div>
+                <div><label className="block mb-1 text-sm font-medium text-gray-600 dark:text-gray-300">Role</label><input type="text" value="Administrator" className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg cursor-not-allowed" disabled /></div>
+                <div className="flex justify-end">
+                    <button type="submit" className="px-6 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">Update Name</button>
+                </div>
+                {message && <p className="text-green-600 text-sm text-center mt-4">{message}</p>}
             </form>
         </div>
     );
